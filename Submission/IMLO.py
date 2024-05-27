@@ -18,14 +18,14 @@ cudnn.enabled = False
 ### Hyper Parameters
 # General Hyper Parameters
 image_size = 128 
-batch_size = 64
-epochs = 50
+batch_size = 32
+epochs = 30
 learning_rate = 1e-3
-drop_out = 0.3
+drop_out = 0.25
 
 # Optimiser Parameters
 sgd_momentum = 0.9
-sgd_weight_decay = 1e-5
+sgd_weight_decay = 5e-6
 nesterov = False
 
 # Scheduler Parameters
@@ -256,7 +256,6 @@ class NNetwork(nn.Module):
         return out
 ### Generate Instance
 classifier = NNetwork().to(device)
-# classifier.load_state_dict(torch.load(save_path)) # This is optional and lets us load a saved model we have trained before
 
 # Training
 ### Training Parameters
@@ -302,19 +301,27 @@ def validation_loop(dataloader, classifier, loss_fn):
     return accuracy, loss
 
 ### Run Classifier on Training and Validation Data
-train_losses, val_accuracies, val_losses = [], [], []
-print(f"Using {device} device")
-for i in range(epochs):
-    print(f"Epoch {i+1}: ",  end="")
-    train_loss = train_loop(train_dataloader, classifier, loss_fn, optimizer)
-    val_accuracy, val_loss = validation_loop(validation_dataloader, classifier, loss_fn)
-    scheduler.step(val_loss)
-    train_losses.append(train_loss)
-    val_accuracies.append(val_accuracy)
-    val_losses.append(val_loss)
-    print(f"Training Avg Loss: {train_loss:>8f} | Validation Avg Loss: {val_loss:>8f} | Validation Accuracy: {(val_accuracy):>0.3f}% | Learning rate: {scheduler.get_last_lr()}")
-    torch.cuda.synchronize()
-print("Finished Training")
+train_classifier = False
+
+if train_classifier == True:
+    train_losses, val_accuracies, val_losses = [], [], []
+    print(f"Using {device} device")
+    for i in range(epochs):
+        print(f"Epoch {i+1}: ",  end="")
+        train_loss = train_loop(train_dataloader, classifier, loss_fn, optimizer)
+        val_accuracy, val_loss = validation_loop(validation_dataloader, classifier, loss_fn)
+        scheduler.step(val_loss)
+        train_losses.append(train_loss)
+        val_accuracies.append(val_accuracy)
+        val_losses.append(val_loss)
+        print(f"Training Avg Loss: {train_loss:>8f} | Validation Avg Loss: {val_loss:>8f} | Validation Accuracy: {(val_accuracy):>0.3f}% | Learning rate: {scheduler.get_last_lr()}")
+        torch.cuda.synchronize()
+    print("Finished Training")
+    
+elif train_classifier == False:
+    # This  lets us load a saved model we have trained before
+    classifier.load_state_dict(torch.load(save_path)) 
+    
 # Testing And Evaluation
 
 ### Testing Data
@@ -336,5 +343,4 @@ ax2.legend()
 print(f"Highest Accuracy: {(max(val_accuracies)):>0.2f}")
 
 # Save the model
-
 # torch.save(classifier.state_dict(), save_path)
